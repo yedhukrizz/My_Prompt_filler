@@ -1,0 +1,6 @@
+{
+  "name": "my prompt filler by sheeprun",
+  "description": "my prompt filler by sheeprun - Jumbo prompt template filler with persistent storage.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
