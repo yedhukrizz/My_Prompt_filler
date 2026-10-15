@@ -108,6 +108,36 @@ export default function App() {
   // Keyboard visibility detection for touch screen & mobile devices
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
 
+  // Text size setting ('sm' | 'md' | 'lg')
+  const [textSizeOption, setTextSizeOption] = useState<'sm' | 'md' | 'lg'>(() => {
+    try {
+      return (localStorage.getItem('promptfill_text_size') as any) || 'md';
+    } catch {
+      return 'md';
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('promptfill_text_size', textSizeOption);
+    } catch {}
+  }, [textSizeOption]);
+
+  // Accent color setting
+  const [accentColor, setAccentColor] = useState<string>(() => {
+    try {
+      return localStorage.getItem('promptfill_accent_color') || '#D4F626';
+    } catch {
+      return '#D4F626';
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('promptfill_accent_color', accentColor);
+    } catch {}
+  }, [accentColor]);
+
   // Onboarding carousel state
   const [isOnboardingOpen, setIsOnboardingOpen] = useState<boolean>(() => {
     try {
@@ -120,7 +150,7 @@ export default function App() {
 
   const onboardingSlides = [
     {
-      title: "Welcome to PromptFill",
+      title: "Welcome to my prompt filler",
       description: "The ultimate interactive prompt builder and filler. Paste any prompt with placeholders and watch them turn into editable chips instantly.",
       icon: FileTextIcon,
     },
@@ -136,7 +166,7 @@ export default function App() {
     },
     {
       title: "Star on GitHub",
-      description: "Love using PromptFill? Show your support by starring the repository on GitHub.",
+      description: "Love using my prompt filler? Show your support by starring the repository on GitHub.",
       actionUrl: "https://github.com/yedhukrizz",
       actionText: "Star on GitHub",
       icon: SparklesIcon,
@@ -290,7 +320,7 @@ export default function App() {
         particleCount: 50,
         spread: 65,
         origin: { y: 0.8 },
-        colors: ['#D4F626', '#8EAFF7', '#111315', '#6366F1'],
+        colors: [accentColor, '#8EAFF7', '#111315', '#6366F1'],
       });
     } catch {
       // ignore
@@ -367,12 +397,29 @@ export default function App() {
 
   const suggestions = editingKey ? getSmartSuggestions(editingKey) : [];
 
+  const textSizeClasses = useMemo(() => {
+    if (textSizeOption === 'sm') {
+      return isCodeOrJson
+        ? 'font-mono text-lg sm:text-xl lg:text-2xl leading-relaxed'
+        : 'font-sans text-lg sm:text-xl lg:text-2xl font-semibold leading-[1.25] tracking-tight';
+    }
+    if (textSizeOption === 'lg') {
+      return isCodeOrJson
+        ? 'font-mono text-2xl sm:text-3xl lg:text-4xl leading-relaxed'
+        : 'font-sans text-2xl sm:text-3xl lg:text-4xl font-semibold leading-[1.25] tracking-tight';
+    }
+    // Default 'md' (reduced on desktop as requested)
+    return isCodeOrJson
+      ? 'font-mono text-xl sm:text-2xl lg:text-3xl leading-relaxed'
+      : 'font-sans text-xl sm:text-2xl lg:text-3xl font-semibold leading-[1.25] tracking-tight';
+  }, [textSizeOption, isCodeOrJson]);
+
   return (
-    <div className={`min-h-screen overflow-x-hidden ${isDarkMode ? 'bg-[#111318] text-neutral-100' : 'bg-[#EAEFF4] text-neutral-900'} px-4 sm:px-8 lg:px-16 py-4 w-full max-w-[1700px] mx-auto flex flex-col justify-between pb-48 relative font-sans box-border`}>
+    <div className={`min-h-screen overflow-x-hidden ${isDarkMode ? 'bg-[#000000] text-neutral-100' : 'bg-[#EAEFF4] text-neutral-900'} px-4 sm:px-8 lg:px-16 py-4 w-full max-w-[1700px] mx-auto flex flex-col justify-between pb-48 relative font-sans box-border`}>
       {/* Top Header Bar */}
       <header className={`w-full flex items-center justify-between pb-3 border-b ${isDarkMode ? 'border-neutral-800' : 'border-neutral-200/60'} mb-3 sm:mb-4`}>
         <div className="flex items-center gap-2">
-          <span className={`font-extrabold text-lg ${isDarkMode ? 'text-white' : 'text-neutral-950'} tracking-tight`}>PromptFill</span>
+          <span className={`font-extrabold text-lg ${isDarkMode ? 'text-white' : 'text-neutral-950'} tracking-tight`}>my prompt filler</span>
           <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${isDarkMode ? 'bg-neutral-800 text-neutral-300' : 'bg-neutral-200 text-neutral-700'}`}>by sheeprun</span>
         </div>
         <button
@@ -431,7 +478,7 @@ export default function App() {
                   isDarkMode ? 'bg-neutral-800 hover:bg-neutral-700 text-white' : 'bg-neutral-950 hover:bg-neutral-800 text-white'
                 }`}
               >
-                <HugeiconsIcon icon={ClipboardPasteIcon} size={30} className="text-[#D4F626]" />
+                <HugeiconsIcon icon={ClipboardPasteIcon} size={30} style={{ color: accentColor }} />
                 <span>Paste Prompt to Auto-Process</span>
               </button>
               <p className={`text-base max-w-md leading-relaxed mt-2 ${isDarkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>
@@ -440,20 +487,20 @@ export default function App() {
             </div>
           ) : (
             <div
-              className={`select-text whitespace-pre-wrap break-words [overflow-wrap:anywhere] max-w-full ${
+              className={`select-text whitespace-pre-wrap break-words [overflow-wrap:anywhere] max-w-full overflow-hidden ${textSizeClasses} ${
                 isCodeOrJson
                   ? isDarkMode
-                    ? 'font-mono text-xl sm:text-2xl lg:text-3xl xl:text-4xl leading-relaxed text-neutral-100 bg-neutral-900/60 p-6 sm:p-10 rounded-3xl backdrop-blur-xs border border-neutral-800'
-                    : 'font-mono text-xl sm:text-2xl lg:text-3xl xl:text-4xl leading-relaxed text-neutral-900 bg-white/40 p-6 sm:p-10 rounded-3xl backdrop-blur-xs border border-white/65'
+                    ? 'text-neutral-100 bg-neutral-900/60 p-6 sm:p-10 rounded-3xl backdrop-blur-xs border border-neutral-800'
+                    : 'text-neutral-900 bg-white/40 p-6 sm:p-10 rounded-3xl backdrop-blur-xs border border-white/65'
                   : isDarkMode
-                    ? 'font-sans text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-semibold text-white leading-[1.28] lg:leading-[1.18] tracking-tight'
-                    : 'font-sans text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-semibold text-neutral-950 leading-[1.28] lg:leading-[1.18] tracking-tight'
+                    ? 'text-white'
+                    : 'text-neutral-950'
               }`}
             >
               {tokens.map((token, index) => {
                 if (token.type === 'text') {
                   return (
-                    <span key={index} className="whitespace-pre-wrap">
+                    <span key={index} className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
                       {token.value}
                     </span>
                   );
@@ -474,10 +521,10 @@ export default function App() {
                       transition={{ type: 'spring', stiffness: 550, damping: 28 }}
                       className="relative inline-block align-baseline mx-1.5 my-1 max-w-full"
                     >
-                      <span className="inline-flex items-center gap-2 bg-[#D4F626] border-2 sm:border-[3px] border-neutral-950 rounded-3xl p-2 sm:p-2.5 shadow-2xl max-w-full">
+                      <span className="inline-flex flex-wrap items-center gap-2.5 border-2 sm:border-[3px] border-neutral-950 rounded-3xl p-3 sm:p-4 shadow-2xl w-full sm:w-[500px] lg:w-[640px] max-w-[95vw]" style={{ backgroundColor: accentColor }}>
                         <textarea
                           ref={editInputRef as any}
-                          rows={2}
+                          rows={4}
                           value={tempValue}
                           onFocus={() => setIsKeyboardVisible(true)}
                           onChange={(e) => setTempValue(e.target.value)}
@@ -491,7 +538,7 @@ export default function App() {
                             }
                           }}
                           placeholder={`Enter ${key}...`}
-                          className="bg-white text-neutral-950 font-bold px-4 py-2.5 rounded-2xl border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-neutral-950 text-xl sm:text-2xl lg:text-3xl w-full sm:w-[380px] max-w-full resize-y min-h-[70px] leading-relaxed whitespace-pre-wrap [overflow-wrap:anywhere]"
+                          className="bg-white text-neutral-950 font-bold px-4 py-3 rounded-2xl border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-neutral-950 text-xl sm:text-2xl w-full resize-y min-h-[120px] leading-relaxed whitespace-pre-wrap [overflow-wrap:anywhere] break-words"
                         />
                         <button
                           type="button"
@@ -546,15 +593,17 @@ export default function App() {
                 // Render filled highlighted filler directly on background
                 if (isFilled) {
                   return (
-                    <button
-                      key={index}
-                      type="button"
-                      onClick={() => handleStartEdit(key)}
-                      title={`Click to edit [${key}]`}
-                      className="inline-flex items-center gap-2 bg-[#D4F626] hover:bg-[#cbf117] active:scale-98 text-neutral-950 font-bold px-4 sm:px-5 py-1.5 sm:py-2 rounded-3xl transition-all shadow-sm cursor-pointer align-baseline mx-1.5 my-1.5 border border-black/15 hover:shadow-md max-w-full text-left whitespace-pre-wrap break-words [overflow-wrap:anywhere]"
-                    >
-                      <span className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{val}</span>
-                    </button>
+                    <span key={index} className="inline-block align-baseline mx-1.5 my-1.5 max-w-full">
+                      <button
+                        type="button"
+                        onClick={() => handleStartEdit(key)}
+                        title={`Click to edit [${key}]`}
+                        style={{ backgroundColor: accentColor }}
+                        className="inline-flex items-center gap-2 text-neutral-950 font-bold px-4 sm:px-5 py-1.5 sm:py-2 rounded-3xl transition-all shadow-sm cursor-pointer text-left whitespace-pre-wrap break-words [overflow-wrap:anywhere] max-w-full border border-black/20 hover:shadow-md"
+                      >
+                        <span className="whitespace-pre-wrap break-words [overflow-wrap:anywhere] max-w-full inline-block">{val}</span>
+                      </button>
+                    </span>
                   );
                 }
 
@@ -588,7 +637,7 @@ export default function App() {
           transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
           className="w-full min-h-[500px] flex flex-col justify-start py-6 px-6 sm:px-12 lg:px-20"
         >
-          <div className="pb-6 mb-8 flex flex-col items-center justify-center text-center gap-4">
+          <div className={`sticky top-0 z-30 pb-6 mb-8 flex flex-col items-center justify-center text-center gap-4 pt-2 ${isDarkMode ? 'bg-[#000000]/90' : 'bg-[#EAEFF4]/90'} backdrop-blur-md`}>
             <h2 className={`text-3xl sm:text-4xl font-extrabold ${isDarkMode ? 'text-white' : 'text-neutral-950'} tracking-tight`}>Saved Prompts</h2>
 
             {/* Import, Export, and Reset Default icons only - no labels - centered */}
@@ -706,17 +755,18 @@ export default function App() {
                       className={`rounded-[28px] p-6 transition-all flex flex-col justify-between ${
                         isActive
                           ? isDarkMode
-                            ? 'bg-neutral-900 border-2 border-[#D4F626] shadow-lg text-white'
-                            : 'bg-white border-2 border-neutral-950 shadow-lg text-neutral-900'
+                            ? 'bg-neutral-900 border-2 shadow-lg text-white'
+                            : 'bg-white border-2 shadow-lg text-neutral-900'
                           : isDarkMode
                             ? 'bg-neutral-900/85 hover:bg-neutral-900 border border-neutral-800 shadow-sm text-neutral-200'
                             : 'bg-white/80 hover:bg-white border border-neutral-200/80 shadow-sm text-neutral-900'
                       }`}
+                      style={isActive ? { borderColor: accentColor } : undefined}
                     >
                       <div className="mb-4">
                         <div className="flex items-center justify-between gap-2 mb-2">
                           {isActive && (
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#D4F626] text-neutral-950 uppercase tracking-wider">
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full text-neutral-950 uppercase tracking-wider" style={{ backgroundColor: accentColor }}>
                               Active
                             </span>
                           )}
@@ -803,8 +853,10 @@ export default function App() {
                           </div>
                         )}
 
-                        {/* Content peak through snippet with black text and white background */}
-                        <p className="text-xs text-neutral-950 font-mono bg-white p-3 rounded-2xl border border-neutral-200 line-clamp-3 leading-relaxed">
+                        {/* Content peek snippet with dark grey background in dark mode and white text */}
+                        <p className={`text-xs font-mono p-3 rounded-2xl border line-clamp-3 leading-relaxed ${
+                          isDarkMode ? 'bg-neutral-800/90 text-white border-neutral-700' : 'bg-white text-neutral-950 border-neutral-200'
+                        }`}>
                           {tpl.content}
                         </p>
                       </div>
@@ -858,11 +910,14 @@ export default function App() {
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Buy Me a Coffee"
-        className="fixed right-0 top-[85%] -translate-y-1/2 z-50 bg-[#111418] hover:bg-black text-[#D4F626] p-3 pl-3.5 rounded-l-2xl shadow-2xl flex items-center gap-2 transition-all duration-300 hover:translate-x-[-4px] group"
+        className="fixed right-0 top-[58%] -translate-y-1/2 z-50 bg-neutral-900/90 dark:bg-neutral-900/95 backdrop-blur-md border-y border-l shadow-2xl p-3 sm:px-4 sm:py-3.5 rounded-l-3xl flex items-center gap-2.5 transition-all duration-300 hover:translate-x-[-4px] group cursor-pointer"
+        style={{ borderColor: accentColor }}
       >
-        <HugeiconsIcon icon={Coffee01Icon} size={22} className="group-hover:rotate-12 transition-transform duration-300" />
-        <span className="hidden sm:inline-block text-xs font-bold tracking-wide uppercase pr-1 text-white">
-          Coffee
+        <div className="w-8 h-8 rounded-full flex items-center justify-center text-neutral-950 shadow-sm transition-transform group-hover:scale-110" style={{ backgroundColor: accentColor }}>
+          <HugeiconsIcon icon={Coffee01Icon} size={18} strokeWidth={2.5} className="group-hover:rotate-12 transition-transform duration-300" />
+        </div>
+        <span className="hidden sm:inline-block text-xs font-extrabold tracking-wider uppercase pr-1 text-white">
+          Buy Coffee
         </span>
       </a>
 
@@ -911,7 +966,7 @@ export default function App() {
                 >
                   <HugeiconsIcon icon={Folder01Icon} size={20} strokeWidth={2.2} />
                   {templates.length > 0 && (
-                    <span className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-[#D4F626] ring-2 ring-white"></span>
+                    <span className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full ring-2 ring-white" style={{ backgroundColor: accentColor }}></span>
                   )}
                 </button>
               </div>
@@ -940,10 +995,12 @@ export default function App() {
                 type="button"
                 onClick={handleSaveCurrent}
                 title="Save Prompt"
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = accentColor; e.currentTarget.style.color = '#000000'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = ''; e.currentTarget.style.color = ''; }}
                 className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-200 active:scale-90 shadow-2xs border ${
                   savedSuccess
                     ? 'bg-emerald-600 border-emerald-600 text-white scale-110'
-                    : isDarkMode ? 'bg-neutral-800 hover:bg-[#D4F626] text-neutral-200 hover:text-neutral-950 border-neutral-700 hover:border-black/20' : 'bg-white hover:bg-[#D4F626] text-neutral-800 hover:text-neutral-950 border-neutral-200/80 hover:border-black/20'
+                    : isDarkMode ? 'bg-neutral-800 text-neutral-200 border-neutral-700 hover:border-black/20' : 'bg-white text-neutral-800 border-neutral-200/80 hover:border-black/20'
                 }`}
               >
                 {savedSuccess ? (
@@ -962,8 +1019,9 @@ export default function App() {
                 className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-200 active:scale-90 shadow-md disabled:opacity-40 ${
                   copied
                     ? 'bg-emerald-600 text-white scale-110'
-                    : isDarkMode ? 'bg-white hover:bg-neutral-200 text-neutral-950 hover:scale-105' : 'bg-neutral-950 hover:bg-neutral-800 text-[#D4F626] hover:scale-105'
+                    : isDarkMode ? 'bg-white hover:bg-neutral-200 text-neutral-950 hover:scale-105' : 'bg-neutral-950 hover:bg-neutral-800 hover:scale-105'
                 }`}
+                style={!copied ? { color: accentColor } : undefined}
               >
                 {copied ? (
                   <HugeiconsIcon icon={Tick01Icon} size={20} strokeWidth={2.6} />
@@ -1131,14 +1189,15 @@ export default function App() {
                       <div
                         key={idx}
                         className={`h-1.5 rounded-full transition-all duration-300 ${
-                          onboardingStep === idx ? 'w-10 bg-[#D4F626]' : 'w-2.5 bg-neutral-800'
+                          onboardingStep === idx ? 'w-10' : 'w-2.5 bg-neutral-800'
                         }`}
+                        style={onboardingStep === idx ? { backgroundColor: accentColor } : undefined}
                       />
                     ))}
                   </div>
 
                   {/* Slide Icon */}
-                  <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-[#D4F626] text-neutral-950 flex items-center justify-center mb-8 shadow-2xl">
+                  <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl text-neutral-950 flex items-center justify-center mb-8 shadow-2xl" style={{ backgroundColor: accentColor }}>
                     <HugeiconsIcon icon={onboardingSlides[onboardingStep].icon} size={42} strokeWidth={2.4} />
                   </div>
 
@@ -1158,7 +1217,8 @@ export default function App() {
                       href={onboardingSlides[onboardingStep].actionUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="px-8 py-4 rounded-full bg-[#D4F626] hover:bg-[#cbf117] text-neutral-950 font-extrabold text-base shadow-2xl transition-all inline-flex items-center gap-2.5 hover:scale-105"
+                      className="px-8 py-4 rounded-full text-neutral-950 font-extrabold text-base shadow-2xl transition-all inline-flex items-center gap-2.5 hover:scale-105"
+                      style={{ backgroundColor: accentColor }}
                     >
                       <span>{onboardingSlides[onboardingStep].actionText}</span>
                     </a>
@@ -1199,7 +1259,8 @@ export default function App() {
                       localStorage.setItem('promptfill_onboarded', 'true');
                     } catch {}
                   }}
-                  className="px-8 py-3.5 rounded-full bg-[#D4F626] hover:bg-[#cbf117] text-neutral-950 text-sm font-extrabold shadow-lg transition-all"
+                  className="px-8 py-3.5 rounded-full text-neutral-950 text-sm font-extrabold shadow-lg transition-all"
+                  style={{ backgroundColor: accentColor }}
                 >
                   Get Started
                 </button>
@@ -1216,16 +1277,16 @@ export default function App() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+            className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
           >
             <motion.div
               initial={{ scale: 0.95, opacity: 0, y: 10 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 10 }}
               transition={{ duration: 0.2 }}
-              className="bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl border border-neutral-200 dark:border-neutral-800"
+              className="bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl border border-neutral-200 dark:border-neutral-800 my-auto max-h-[90vh] flex flex-col"
             >
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center justify-between mb-6 shrink-0">
                 <h3 className="text-2xl font-extrabold tracking-tight">Settings & About</h3>
                 <button
                   type="button"
@@ -1236,7 +1297,7 @@ export default function App() {
                 </button>
               </div>
 
-              <div className="space-y-6">
+              <div className="space-y-6 overflow-y-auto pr-1 flex-1">
                 {/* Theme Switch */}
                 <div className="flex items-center justify-between p-4 rounded-2xl bg-neutral-50 dark:bg-neutral-800/60 border border-neutral-200/80 dark:border-neutral-700">
                   <div>
@@ -1246,17 +1307,74 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => setIsDarkMode(!isDarkMode)}
-                    className="px-5 py-2.5 rounded-full font-extrabold text-xs bg-neutral-950 dark:bg-[#D4F626] text-white dark:text-neutral-950 shadow-md transition-all hover:scale-105"
+                    className="px-5 py-2.5 rounded-full font-extrabold text-xs text-neutral-950 shadow-md transition-all hover:scale-105"
+                    style={{ backgroundColor: isDarkMode ? accentColor : '#000000', color: isDarkMode ? '#000000' : '#ffffff' }}
                   >
                     {isDarkMode ? 'Dark Mode' : 'Light Mode'}
                   </button>
+                </div>
+
+                {/* Text Size Setting */}
+                <div className="p-4 rounded-2xl bg-neutral-50 dark:bg-neutral-800/60 border border-neutral-200/80 dark:border-neutral-700 space-y-3">
+                  <div>
+                    <h4 className="font-bold text-base">Text Size</h4>
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400">Choose display text size for prompts</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {(['sm', 'md', 'lg'] as const).map((size) => (
+                      <button
+                        key={size}
+                        type="button"
+                        onClick={() => setTextSizeOption(size)}
+                        className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all border ${
+                          textSizeOption === size
+                            ? 'bg-neutral-950 dark:bg-white text-white dark:text-neutral-950 border-neutral-950 dark:border-white shadow-sm'
+                            : 'bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 border-neutral-200 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-700'
+                        }`}
+                      >
+                        {size === 'sm' ? 'Compact' : size === 'md' ? 'Normal' : 'Large'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Accent Colour Setting */}
+                <div className="p-4 rounded-2xl bg-neutral-50 dark:bg-neutral-800/60 border border-neutral-200/80 dark:border-neutral-700 space-y-3">
+                  <div>
+                    <h4 className="font-bold text-base">Accent Colour</h4>
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400">Choose your preferred highlight colour</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    {[
+                      { name: 'Lime', color: '#D4F626' },
+                      { name: 'Indigo', color: '#6366F1' },
+                      { name: 'Emerald', color: '#10B981' },
+                      { name: 'Amber', color: '#F59E0B' },
+                      { name: 'Rose', color: '#F43F5E' },
+                    ].map((item) => (
+                      <button
+                        key={item.color}
+                        type="button"
+                        onClick={() => setAccentColor(item.color)}
+                        title={item.name}
+                        className={`w-9 h-9 rounded-full transition-transform flex items-center justify-center border-2 ${
+                          accentColor === item.color ? 'scale-110 border-neutral-950 dark:border-white shadow-md' : 'border-transparent hover:scale-105'
+                        }`}
+                        style={{ backgroundColor: item.color }}
+                      >
+                        {accentColor === item.color && (
+                          <span className="w-2.5 h-2.5 rounded-full bg-neutral-950/80"></span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 {/* About App */}
                 <div className="p-4 rounded-2xl bg-neutral-50 dark:bg-neutral-800/60 border border-neutral-200/80 dark:border-neutral-700 space-y-2">
                   <h4 className="font-bold text-base flex items-center gap-2">
                     <span>PromptFill</span>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#D4F626] text-neutral-950">v2.0</span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full text-neutral-950" style={{ backgroundColor: accentColor }}>v2.0</span>
                   </h4>
                   <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-300 leading-relaxed">
                     PromptFill is the ultimate interactive prompt builder and filler. It turns static prompts into living systems by linking custom templates to working workflows. Built with ❤️ by Sheeprun.
@@ -1274,7 +1392,8 @@ export default function App() {
                       href="https://www.buymeacoffee.com/yedhukrizz"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-xs font-bold px-3.5 py-1.5 rounded-full bg-[#D4F626] text-neutral-950 shadow-2xs hover:bg-[#cbf117]"
+                      className="text-xs font-bold px-3.5 py-1.5 rounded-full text-neutral-950 shadow-2xs hover:opacity-90"
+                      style={{ backgroundColor: accentColor }}
                     >
                       Buy Me a Coffee
                     </a>
@@ -1290,7 +1409,7 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="mt-8 pt-4 border-t border-neutral-200 dark:border-neutral-800 flex justify-end">
+              <div className="mt-6 pt-4 border-t border-neutral-200 dark:border-neutral-800 flex justify-end shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsSettingsOpen(false)}
