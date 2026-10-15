@@ -22,7 +22,7 @@ export function usePromptStorage() {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
+          return parsed.map((t: any) => ({ ...t, folder: t.folder || 'General' }));
         }
       }
     } catch (e) {
@@ -146,7 +146,7 @@ export function usePromptStorage() {
   }, []);
 
   // Save or update active template
-  const saveCurrentAsNewTemplate = useCallback((customTitle?: string) => {
+  const saveCurrentAsNewTemplate = useCallback((customTitle?: string, folder?: string) => {
     const newId = `tpl-${Date.now()}`;
     const newTemplate: PromptTemplate = {
       id: newId,
@@ -155,6 +155,7 @@ export function usePromptStorage() {
       tags: tags.length ? tags : ['Custom'],
       accentColor: 'lime',
       isFavorite: false,
+      folder: folder || 'General',
       lastModified: Date.now(),
       defaultValues: { ...values },
     };
@@ -221,21 +222,41 @@ export function usePromptStorage() {
     loadTemplate(DEFAULT_TEMPLATES[0]);
   }, [loadTemplate]);
 
-  // Export templates as JSON
-  const exportTemplatesAsJSON = useCallback(() => {
-    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(templates, null, 2));
+  // Export templates and custom folders as JSON
+  const exportTemplatesAsJSON = useCallback((customFolders: string[] = []) => {
+    const exportData = {
+      version: 2,
+      templates,
+      customFolders,
+      exportedAt: new Date().toISOString()
+    };
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(exportData, null, 2));
     const downloadAnchor = document.createElement('a');
     downloadAnchor.setAttribute('href', dataStr);
-    downloadAnchor.setAttribute('download', `promptfill-templates-${new Date().toISOString().slice(0, 10)}.json`);
+    downloadAnchor.setAttribute('download', `promptfill-backup-${new Date().toISOString().slice(0, 10)}.json`);
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
   }, [templates]);
 
-  // Import templates from JSON
+  // Import templates and custom folders from JSON
   const importTemplates = useCallback((jsonString: string): boolean => {
     try {
       const parsed = JSON.parse(jsonString);
+      // Support object export format { templates, customFolders }
+      if (parsed && typeof parsed === 'object' && Array.isArray(parsed.templates)) {
+        setTemplates(parsed.templates);
+        if (parsed.templates.length > 0) {
+          loadTemplate(parsed.templates[0]);
+        }
+        if (Array.isArray(parsed.customFolders)) {
+          try {
+            localStorage.setItem('promptfill_custom_folders', JSON.stringify(parsed.customFolders));
+          } catch {}
+        }
+        return true;
+      }
+      // Support legacy raw array format
       if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].content) {
         setTemplates(parsed);
         loadTemplate(parsed[0]);
@@ -251,6 +272,13 @@ export function usePromptStorage() {
   const renameTemplate = useCallback((id: string, newTitle: string) => {
     setTemplates((prev) =>
       prev.map((t) => (t.id === id ? { ...t, title: newTitle.trim() || 'Untitled', lastModified: Date.now() } : t))
+    );
+  }, []);
+
+  // Move template to folder
+  const moveTemplateToFolder = useCallback((id: string, folder: string) => {
+    setTemplates((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, folder: folder.trim() || 'General', lastModified: Date.now() } : t))
     );
   }, []);
 
@@ -271,6 +299,7 @@ export function usePromptStorage() {
     updateCurrentTemplate,
     deleteTemplate,
     renameTemplate,
+    moveTemplateToFolder,
     toggleFavorite,
     fillSampleValues,
     resetToDefaults,

@@ -8,6 +8,7 @@ export interface PromptTemplate {
   lastModified: number;
   defaultValues?: Record<string, string>;
   accentColor?: 'lime' | 'blue' | 'black' | 'white';
+  folder?: string;
 }
 
 export interface PlaceholderItem {

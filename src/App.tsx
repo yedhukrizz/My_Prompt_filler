@@ -50,10 +50,44 @@ export default function App() {
     resetToDefaults,
     exportTemplatesAsJSON,
     importTemplates,
+    moveTemplateToFolder,
   } = usePromptStorage();
 
   // TWO VIEWS: 'copybox' (the prompt) and 'saved'
   const [activeTab, setActiveTab] = useState<'copybox' | 'saved'>('copybox');
+
+  // Folder states
+  const [selectedFolder, setSelectedFolder] = useState<string>('All');
+  const [customFolders, setCustomFolders] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('promptfill_custom_folders');
+      return saved ? JSON.parse(saved) : ['General', 'Development', 'Marketing', 'Personal'];
+    } catch {
+      return ['General', 'Development', 'Marketing', 'Personal'];
+    }
+  });
+
+  const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
+  const [newFolderNameInput, setNewFolderNameInput] = useState('');
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('promptfill_custom_folders', JSON.stringify(customFolders));
+    } catch {}
+  }, [customFolders]);
+
+  const allFolders = useMemo(() => {
+    const set = new Set<string>(['General', ...customFolders]);
+    templates.forEach((t) => {
+      if (t.folder) set.add(t.folder);
+    });
+    return Array.from(set);
+  }, [templates, customFolders]);
+
+  const filteredTemplates = useMemo(() => {
+    if (selectedFolder === 'All') return templates;
+    return templates.filter((t) => (t.folder || 'General') === selectedFolder);
+  }, [templates, selectedFolder]);
 
   // Raw editor toggle
   const [isRawEditing, setIsRawEditing] = useState(false);
@@ -247,6 +281,12 @@ export default function App() {
       const content = event.target?.result as string;
       const success = importTemplates(content);
       if (success) {
+        try {
+          const savedFolders = localStorage.getItem('promptfill_custom_folders');
+          if (savedFolders) {
+            setCustomFolders(JSON.parse(savedFolders));
+          }
+        } catch {}
         setImportStatus('Successfully imported saves!');
         setTimeout(() => setImportStatus(null), 2500);
       } else {
@@ -453,7 +493,7 @@ export default function App() {
 
               <button
                 type="button"
-                onClick={exportTemplatesAsJSON}
+                onClick={() => exportTemplatesAsJSON(customFolders)}
                 className="w-11 h-11 rounded-full bg-white hover:bg-neutral-100 text-neutral-800 border border-neutral-200 transition-colors shadow-2xs flex items-center justify-center"
                 title="Export saves as JSON"
               >
@@ -486,112 +526,191 @@ export default function App() {
                 <HugeiconsIcon icon={ArrowReloadHorizontalIcon} size={18} />
               </button>
             </div>
+
+            {/* Folder Filter Tabs */}
+            <div className="flex items-center justify-center flex-wrap gap-2 mt-2">
+              <button
+                type="button"
+                onClick={() => setSelectedFolder('All')}
+                className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${
+                  selectedFolder === 'All'
+                    ? 'bg-neutral-950 text-white shadow-sm'
+                    : 'bg-white hover:bg-neutral-100 text-neutral-600 border border-neutral-200'
+                }`}
+              >
+                All ({templates.length})
+              </button>
+              {allFolders.map(folderName => {
+                const count = templates.filter(t => (t.folder || 'General') === folderName).length;
+                return (
+                  <button
+                    key={folderName}
+                    type="button"
+                    onClick={() => setSelectedFolder(folderName)}
+                    className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 ${
+                      selectedFolder === folderName
+                        ? 'bg-neutral-950 text-white shadow-sm'
+                        : 'bg-white hover:bg-neutral-100 text-neutral-600 border border-neutral-200'
+                    }`}
+                  >
+                    <HugeiconsIcon icon={Folder01Icon} size={13} />
+                    <span>{folderName} ({count})</span>
+                  </button>
+                );
+              })}
+              <button
+                type="button"
+                onClick={() => {
+                  setNewFolderNameInput('');
+                  setIsFolderModalOpen(true);
+                }}
+                className="px-3.5 py-1.5 rounded-full text-xs font-bold bg-white hover:bg-neutral-100 text-neutral-600 border border-dashed border-neutral-300 transition-all flex items-center gap-1"
+                title="Create new folder"
+              >
+                <span>+ New Folder</span>
+              </button>
+            </div>
           </div>
 
           {/* Saved Prompts Grid with Content Peak Through */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {templates.map((tpl) => {
-              const isActive = activeTemplateId === tpl.id;
-              const isRenaming = renamingId === tpl.id;
+            {filteredTemplates.length === 0 ? (
+              <div className="col-span-full py-16 text-center text-neutral-400 text-sm font-medium">
+                No saved prompts in this folder.
+              </div>
+            ) : (
+              <>
+                {filteredTemplates.map((tpl) => {
+                  const isActive = activeTemplateId === tpl.id;
+                  const isRenaming = renamingId === tpl.id;
 
-              return (
-                <div
-                  key={tpl.id}
-                  className={`rounded-[28px] p-6 transition-all flex flex-col justify-between ${
-                    isActive
-                      ? 'bg-white border-2 border-neutral-950 shadow-lg'
-                      : 'bg-white/80 hover:bg-white border border-neutral-200/80 shadow-sm'
-                  }`}
-                >
-                  <div className="mb-4">
-                    <div className="flex items-center justify-between gap-2 mb-2">
-                      {isActive && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#D4F626] text-neutral-950 uppercase tracking-wider">
-                          Active
-                        </span>
-                      )}
+                  return (
+                    <div
+                      key={tpl.id}
+                      className={`rounded-[28px] p-6 transition-all flex flex-col justify-between ${
+                        isActive
+                          ? 'bg-white border-2 border-neutral-950 shadow-lg'
+                          : 'bg-white/80 hover:bg-white border border-neutral-200/80 shadow-sm'
+                      }`}
+                    >
+                      <div className="mb-4">
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          {isActive && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#D4F626] text-neutral-950 uppercase tracking-wider">
+                              Active
+                            </span>
+                          )}
+                          <div className="relative group/folder inline-flex items-center gap-1 text-[11px] font-semibold bg-neutral-100 hover:bg-neutral-200 text-neutral-700 px-2.5 py-1 rounded-full transition-colors cursor-pointer ml-auto">
+                            <HugeiconsIcon icon={Folder01Icon} size={12} />
+                            <span>{tpl.folder || 'General'}</span>
+                            <select
+                              value={tpl.folder || 'General'}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                if (val === '__NEW__') {
+                                  const name = window.prompt('Enter new folder name:');
+                                  if (name && name.trim()) {
+                                    if (!customFolders.includes(name.trim())) {
+                                      setCustomFolders(prev => [...prev, name.trim()]);
+                                    }
+                                    moveTemplateToFolder(tpl.id, name.trim());
+                                  }
+                                } else {
+                                  moveTemplateToFolder(tpl.id, val);
+                                }
+                              }}
+                              className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                            >
+                              {allFolders.map(f => (
+                                <option key={f} value={f}>{f}</option>
+                              ))}
+                              <option value="__NEW__">+ New Folder...</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        {/* Rename saved prompt inline or display title */}
+                        {isRenaming ? (
+                          <div className="flex items-center gap-2 mb-3">
+                            <input
+                              autoFocus
+                              type="text"
+                              value={renamingTitle}
+                              onFocus={() => setIsKeyboardVisible(true)}
+                              onChange={(e) => setRenamingTitle(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  renameTemplate(tpl.id, renamingTitle);
+                                  setRenamingId(null);
+                                } else if (e.key === 'Escape') {
+                                  setRenamingId(null);
+                                }
+                              }}
+                              className="w-full text-base font-bold text-neutral-950 bg-neutral-100 px-3 py-1 rounded-xl border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                renameTemplate(tpl.id, renamingTitle);
+                                setRenamingId(null);
+                              }}
+                              className="w-8 h-8 rounded-xl bg-neutral-950 text-white flex items-center justify-center shrink-0"
+                              title="Save title"
+                            >
+                              <HugeiconsIcon icon={Tick01Icon} size={16} strokeWidth={2.8} />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-between gap-2 mb-3">
+                            <h3 className="font-extrabold text-neutral-950 text-lg truncate tracking-tight">
+                              {tpl.title}
+                            </h3>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setRenamingId(tpl.id);
+                                setRenamingTitle(tpl.title);
+                              }}
+                              className="text-neutral-400 hover:text-neutral-900 p-1 rounded-lg hover:bg-neutral-100 transition-colors shrink-0"
+                              title="Rename prompt"
+                            >
+                              <HugeiconsIcon icon={Edit02Icon} size={15} />
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Content peak through snippet */}
+                        <p className="text-xs text-neutral-500 font-mono bg-neutral-50 p-3 rounded-2xl border border-neutral-200/60 line-clamp-3 leading-relaxed">
+                          {tpl.content}
+                        </p>
+                      </div>
+
+                      <div className="pt-3 border-t border-neutral-100 flex items-center justify-between">
+                        <button
+                          type="button"
+                          onClick={() => deleteTemplate(tpl.id)}
+                          className="p-2 text-neutral-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors"
+                          title="Delete saved prompt"
+                        >
+                          <HugeiconsIcon icon={Delete02Icon} size={18} />
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            loadTemplate(tpl);
+                            setActiveTab('copybox');
+                          }}
+                          className="px-5 py-2 rounded-full bg-neutral-950 text-white text-xs font-bold hover:bg-neutral-800 transition-colors shadow-xs"
+                        >
+                          Load Prompt
+                        </button>
+                      </div>
                     </div>
-
-                    {/* Rename saved prompt inline or display title */}
-                    {isRenaming ? (
-                      <div className="flex items-center gap-2 mb-3">
-                        <input
-                          autoFocus
-                          type="text"
-                          value={renamingTitle}
-                          onFocus={() => setIsKeyboardVisible(true)}
-                          onChange={(e) => setRenamingTitle(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              renameTemplate(tpl.id, renamingTitle);
-                              setRenamingId(null);
-                            } else if (e.key === 'Escape') {
-                              setRenamingId(null);
-                            }
-                          }}
-                          className="w-full text-base font-bold text-neutral-950 bg-neutral-100 px-3 py-1 rounded-xl border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-neutral-900"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            renameTemplate(tpl.id, renamingTitle);
-                            setRenamingId(null);
-                          }}
-                          className="w-8 h-8 rounded-xl bg-neutral-950 text-white flex items-center justify-center shrink-0"
-                          title="Save title"
-                        >
-                          <HugeiconsIcon icon={Tick01Icon} size={16} strokeWidth={2.8} />
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-between gap-2 mb-3">
-                        <h3 className="font-extrabold text-neutral-950 text-lg truncate tracking-tight">
-                          {tpl.title}
-                        </h3>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setRenamingId(tpl.id);
-                            setRenamingTitle(tpl.title);
-                          }}
-                          className="text-neutral-400 hover:text-neutral-900 p-1 rounded-lg hover:bg-neutral-100 transition-colors shrink-0"
-                          title="Rename prompt"
-                        >
-                          <HugeiconsIcon icon={Edit02Icon} size={15} />
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Content peak through snippet */}
-                    <p className="text-xs text-neutral-500 font-mono bg-neutral-50 p-3 rounded-2xl border border-neutral-200/60 line-clamp-3 leading-relaxed">
-                      {tpl.content}
-                    </p>
-                  </div>
-
-                  <div className="pt-3 border-t border-neutral-100 flex items-center justify-between">
-                    <button
-                      type="button"
-                      onClick={() => deleteTemplate(tpl.id)}
-                      className="p-2 text-neutral-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors"
-                      title="Delete saved prompt"
-                    >
-                      <HugeiconsIcon icon={Delete02Icon} size={18} />
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        loadTemplate(tpl);
-                        setActiveTab('copybox');
-                      }}
-                      className="px-5 py-2 rounded-full bg-neutral-950 text-white text-xs font-bold hover:bg-neutral-800 transition-colors shadow-xs"
-                    >
-                      Load Prompt
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+                  );
+                })}
+              </>
+            )}
           </div>
         </motion.main>
       )}
@@ -611,7 +730,7 @@ export default function App() {
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Buy Me a Coffee"
-        className="fixed right-0 top-[62%] -translate-y-1/2 z-50 bg-[#111418] hover:bg-black text-[#D4F626] p-3 pl-3.5 rounded-l-2xl shadow-2xl flex items-center gap-2 transition-all duration-300 hover:translate-x-[-4px] group"
+        className="fixed right-0 top-[80%] -translate-y-1/2 z-50 bg-[#111418] hover:bg-black text-[#D4F626] p-3 pl-3.5 rounded-l-2xl shadow-2xl flex items-center gap-2 transition-all duration-300 hover:translate-x-[-4px] group"
       >
         <HugeiconsIcon icon={Coffee01Icon} size={22} className="group-hover:rotate-12 transition-transform duration-300" />
         <span className="hidden sm:inline-block text-xs font-bold tracking-wide uppercase pr-1 text-white">
@@ -728,6 +847,80 @@ export default function App() {
             <span className="text-[11px] font-semibold text-neutral-950 tracking-wide select-none">
               my prompt filler by sheeprun
             </span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* New Folder Add Modal */}
+      <AnimatePresence>
+        {isFolderModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 10 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 10 }}
+              transition={{ duration: 0.2 }}
+              className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-neutral-200"
+            >
+              <h3 className="text-xl font-extrabold text-neutral-950 mb-2">Create New Folder</h3>
+              <p className="text-sm text-neutral-500 mb-6">Organize your saved prompts into custom folders.</p>
+              
+              <input
+                autoFocus
+                type="text"
+                value={newFolderNameInput}
+                onChange={(e) => setNewFolderNameInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    if (newFolderNameInput.trim()) {
+                      const name = newFolderNameInput.trim();
+                      if (!customFolders.includes(name)) {
+                        setCustomFolders(prev => [...prev, name]);
+                      }
+                      setSelectedFolder(name);
+                      setIsFolderModalOpen(false);
+                      setNewFolderNameInput('');
+                    }
+                  } else if (e.key === 'Escape') {
+                    setIsFolderModalOpen(false);
+                  }
+                }}
+                placeholder="Folder name (e.g. Coding, Ideas)"
+                className="w-full px-4 py-3 rounded-2xl border border-neutral-200 bg-neutral-50 text-neutral-900 font-medium focus:outline-none focus:ring-2 focus:ring-neutral-950 focus:bg-white mb-6 text-sm"
+              />
+
+              <div className="flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsFolderModalOpen(false)}
+                  className="px-5 py-2.5 rounded-full text-xs font-bold text-neutral-600 hover:bg-neutral-100 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (newFolderNameInput.trim()) {
+                      const name = newFolderNameInput.trim();
+                      if (!customFolders.includes(name)) {
+                        setCustomFolders(prev => [...prev, name]);
+                      }
+                      setSelectedFolder(name);
+                      setIsFolderModalOpen(false);
+                      setNewFolderNameInput('');
+                    }
+                  }}
+                  className="px-6 py-2.5 rounded-full text-xs font-bold bg-neutral-950 hover:bg-neutral-800 text-white shadow-md transition-all"
+                >
+                  Create Folder
+                </button>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
